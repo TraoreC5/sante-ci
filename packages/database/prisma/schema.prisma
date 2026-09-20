@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// === ENUMS ===
+
+enum DocumentType {
+  ORDONNANCE
+  RESULTAT_EXAMEN
+  SCAN_PERSONNEL
+}
+
+enum StatutRendezVous {
+  PLANIFIE
+  ANNULE
+  TERMINE
+}
+
+enum StatutPaiement {
+  EN_ATTENTE
+  PAYE_MOBILE_MONEY
+  GRATUIT
+}
+
+// === MODÈLES ===
+
+model Patient {
+  id                   String              @id @default(uuid()) @db.Uuid
+  nom                  String              @db.VarChar(100)
+  prenom               String              @db.VarChar(100)
+  email                String              @unique @db.VarChar(255)
+  telephone            String              @unique @db.VarChar(20)
+  passwordHash         String              @map("password_hash")
+  pinHash              String?             @map("pin_hash")
+  isBiometricEnabled   Boolean             @default(false) @map("is_biometric_enabled")
+  numeroCmu            String?             @map("numero_cmu") @db.VarChar(50)
+  dateNaissance        DateTime?           @map("date_naissance")
+  iceGroupeSanguin     String?             @map("ice_groupe_sanguin") @db.VarChar(10)
+  iceAllergies         String?             @map("ice_allergies")
+  pushToken            String?             @map("push_token")
+  parentId             String?             @map("parent_id") @db.Uuid
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+
+  // Relations
+  parent               Patient?            @relation("ProfilsFamiliaux", fields: [parentId], references: [id])
+  enfants              Patient[]           @relation("ProfilsFamiliaux")
+  documents            DocumentMedical[]   @relation("PatientDocuments")
+  partages             PartageEphemere[]   @relation("PatientPartages")
+  rendezVous           RendezVous[]        @relation("PatientRendezVous")
+  refreshTokens        RefreshToken[]      @relation("PatientRefreshTokens")
+
+  @@index([parentId])
+  @@index([numeroCmu])
+  @@map("patients")
+}
+
+model Clinique {
+  id                 String     @id @default(uuid()) @db.Uuid
+  nom                String     @db.VarChar(200)
+  adresse            String
+  ville              String     @db.VarChar(100)
+  telephoneContact   String     @map("telephone_contact") @db.VarChar(20)
+  adminUserId        String     @map("admin_user_id") @db.Uuid
+  isActive           Boolean    @default(true) @map("is_active")
+  createdAt          DateTime   @default(now()) @map("created_at")
+
+  // Relations
+  medecins           Medecin[]  @relation("CliniqueMedecins")
+
+  @@map("cliniques")
+}
+
+model Medecin {
+  id               String              @id @default(uuid()) @db.Uuid
+  nom              String              @db.VarChar(100)
+  prenom           String              @db.VarChar(100)
+  specialite       String              @db.VarChar(150)
+  numeroOrdre      String              @unique @map("numero_ordre") @db.VarChar(50)
+  cliniqueId       String              @map("clinique_id") @db.Uuid
+  email            String              @unique @db.VarChar(255)
+  passwordHash     String              @map("password_hash")
+  createdAt        DateTime            @default(now()) @map("created_at")
+
+  // Relations
+  clinique         Clinique            @relation("CliniqueMedecins", fields: [cliniqueId], references: [id])
+  documents        DocumentMedical[]   @relation("MedecinDocuments")
+  partages         PartageEphemere[]   @relation("MedecinPartages")
+  rendezVous       RendezVous[]        @relation("MedecinRendezVous")
+
+  @@index([cliniqueId])
+  @@map("medecins")
+}
+
+model DocumentMedical {
+  id                 String        @id @default(uuid()) @db.Uuid
+  patientId          String        @map("patient_id") @db.Uuid
+  medecinId          String?       @map("medecin_id") @db.Uuid
+  type               DocumentType
+  titre              String        @db.VarChar(300)
+  encryptedFileUrl   String        @map("encrypted_file_url")
+  uploadDate         DateTime      @default(now()) @map("upload_date")
+
+  // Relations
+  patient            Patient       @relation("PatientDocuments", fields: [patientId], references: [id])
+  medecin            Medecin?      @relation("MedecinDocuments", fields: [medecinId], references: [id])
+
+  @@index([patientId, type])
+  @@index([medecinId])
+  @@map("documents_medicaux")
+}
+
+model PartageEphemere {
+  id                  String    @id @default(uuid()) @db.Uuid
+  patientId           String    @map("patient_id") @db.Uuid
+  medecinId           String?   @map("medecin_id") @db.Uuid
+  codePinEphemere     String    @map("code_pin_ephemere") @db.VarChar(6)
+  qrCodeToken         String    @unique @map("qr_code_token")
+  expiresAt           DateTime  @map("expires_at")
+  isUsed              Boolean   @default(false) @map("is_used")
+
+  // Relations
+  patient             Patient   @relation("PatientPartages", fields: [patientId], references: [id])
+  medecin             Medecin?  @relation("MedecinPartages", fields: [medecinId], references: [id])
+
+  @@index([codePinEphemere])
+  @@index([qrCodeToken])
+  @@index([expiresAt])
+  @@map("partages_ephemeres")
+}
+
+model RendezVous {
+  id               String              @id @default(uuid()) @db.Uuid
+  patientId        String              @map("patient_id") @db.Uuid
+  medecinId        String              @map("medecin_id") @db.Uuid
+  dateHeure        DateTime            @map("date_heure")
+  motif            String
+  statut           StatutRendezVous    @default(PLANIFIE)
+  statutPaiement   StatutPaiement      @default(EN_ATTENTE) @map("statut_paiement")
+  transactionId    String?             @map("transaction_id")
+
+  // Relations
+  patient          Patient             @relation("PatientRendezVous", fields: [patientId], references: [id])
+  medecin          Medecin             @relation("MedecinRendezVous", fields: [medecinId], references: [id])
+
+  @@index([patientId, dateHeure])
+  @@index([medecinId, dateHeure])
+  @@map("rendez_vous")
+}
+
+model RefreshToken {
+  id          String   @id @default(uuid()) @db.Uuid
+  token       String   @unique
+  patientId   String   @map("patient_id") @db.Uuid
+  expiresAt   DateTime @map("expires_at")
+  revoked     Boolean  @default(false)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  patient     Patient  @relation("PatientRefreshTokens", fields: [patientId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([patientId])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}

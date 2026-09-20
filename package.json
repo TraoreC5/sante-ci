@@ -1,0 +1,20 @@
+{
+  "name": "sante-ci",
+  "private": true,
+  "scripts": {
+    "dev:api": "turbo run dev --filter=@sante-ci/api",
+    "dev:web-clinic": "turbo run dev --filter=@sante-ci/web-clinic",
+    "dev:web-admin": "turbo run dev --filter=@sante-ci/web-admin",
+    "db:generate": "turbo run db:generate --filter=@sante-ci/database",
+    "db:migrate": "turbo run db:migrate --filter=@sante-ci/database",
+    "db:seed": "turbo run db:seed --filter=@sante-ci/database",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "build": "turbo run build"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@9.15.0"
+}

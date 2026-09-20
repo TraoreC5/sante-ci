@@ -1,0 +1,25 @@
+{
+  "expo": {
+    "name": "Santé CI",
+    "slug": "sante-ci",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#FF6B35"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ci.sante.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FF6B35"
+      },
+      "package": "ci.sante.app"
+    },
+    "plugins": ["expo-router"]
+  }
+}
